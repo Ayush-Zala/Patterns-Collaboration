@@ -1,0 +1,36 @@
+{
+  "name": "patterns-shared-inbox",
+  "version": "0.1.0",
+  "description": "Shared inbox prototype backend",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "node prisma/seed.js",
+    "test": "cross-env NODE_ENV=test jest"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.2",
+    "bullmq": "^5.78.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ioredis": "^5.11.1",
+    "prisma": "^6.16.2",
+    "redis": "^4.6.15",
+    "resend": "^6.12.4",
+    "socket.io": "^4.8.1",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "cross-env": "^10.1.0",
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2",
+    "tailwindcss": "^4.2.2"
+  }
+}

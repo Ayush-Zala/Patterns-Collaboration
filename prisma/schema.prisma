@@ -1,0 +1,783 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  extensions        = [vector]
+}
+
+model activitylog {
+  id         String   @id 
+  type       String   
+  actorId    String?  
+  entityType String?  
+  entityId   String?  
+  metadata   String   
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+}
+
+model authaccount {
+  id                    String    @id 
+  accountId             String    
+  providerId            String    
+  userId                String    
+  accessToken           String?   
+  refreshToken          String?   
+  idToken               String?   
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   
+  password              String?   
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model authinvitation {
+  id               String           @id 
+  organizationId   String           
+  email            String
+  role             String?          
+  status           String           @default("pending") 
+  teamId           String?          
+  expiresAt        DateTime
+  inviterId        String           
+  createdAt        DateTime         @default(now())
+  user             user             @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+  authorganization authorganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([inviterId])
+  @@index([email])
+  @@index([organizationId])
+}
+
+model authmember {
+  id               String           @id 
+  organizationId   String           
+  userId           String           
+  role             String           @default("member") 
+  createdAt        DateTime         @default(now())
+  authorganization authorganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             user             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model authorganization {
+  id             String           @id 
+  name           String
+  slug           String           @unique()
+  logo           String?          
+  metadata       String?          
+  createdAt      DateTime         @default(now())
+  authinvitation authinvitation[]
+  authmember     authmember[]
+  authsession    authsession[]
+  automationrule automationrule[]
+  customfield    customfield[]
+  workspace      workspace[]
+}
+
+model authsession {
+  id                   String            @id 
+  userId               String            
+  token                String            @unique() 
+  expiresAt            DateTime
+  ipAddress            String?           
+  userAgent            String?           
+  activeOrganizationId String?           
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime
+  authorganization     authorganization? @relation(fields: [activeOrganizationId], references: [id])
+  user                 user              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([activeOrganizationId])
+  @@index([userId])
+}
+
+model authverification {
+  id         String   @id 
+  identifier String
+  value      String   
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+
+  @@unique([identifier, value])
+  @@index([identifier])
+}
+
+model automationrule {
+  id               String            @id 
+  organizationId   String?           
+  name             String            
+  triggers         String            
+  conditions       String            
+  actions          String            
+  stopProcessing   Boolean           @default(false)
+  isActive         Boolean           @default(true)
+  createdBy        String?           
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime
+  scopeId          String            @default("global") 
+  scopeType        String            @default("company") 
+  authorganization authorganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([scopeType, scopeId])
+}
+
+model channel {
+  id               String             @id 
+  name             String             
+  emailAddress     String             @unique()
+  provider         String             
+  oauthAccountId   String?            
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  scopeId          String             @default("global") 
+  scopeType        String             @default("company") 
+  channelsyncstate channelsyncstate?
+  inboxchannel     inboxchannel[]
+  message          message[]
+  signaturechannel signaturechannel[]
+  thread           thread[]
+  sequence         sequence[]
+
+  @@index([scopeType, scopeId])
+}
+
+model channelsyncstate {
+  id                String    @id 
+  channelId         String    @unique() 
+  provider          String    
+  syncEnabled       Boolean   @default(false)
+  status            String    @default("idle") 
+  cursor            String?
+  watchExpirationAt DateTime?
+  lastSyncedAt      DateTime?
+  lastError         String?   
+  updatedAt         DateTime
+  createdAt         DateTime  @default(now())
+  channel           channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+}
+
+model comment {
+  id         String   @id 
+  threadId   String   
+  authorId   String   
+  body       String   
+  visibility String   @default("internal") 
+  createdAt  DateTime @default(now())
+  scopeId    String   @default("global") 
+  scopeType  String   @default("company") 
+  thread     thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([scopeType, scopeId])
+}
+
+model delegation {
+  id                 String               @id 
+  name               String               
+  permissionScope    String               
+  createdBy          String?              
+  createdAt          DateTime             @default(now())
+  delegationdelegate delegationdelegate[]
+  delegationinbox    delegationinbox[]
+}
+
+model delegationdelegate {
+  id            String     @id 
+  delegationId  String     
+  delegateEmail String
+  createdAt     DateTime   @default(now())
+  delegation    delegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+
+  @@index([delegationId])
+}
+
+model delegationinbox {
+  id           String     @id 
+  delegationId String     
+  inboxId      String     
+  createdAt    DateTime   @default(now())
+  delegation   delegation @relation(fields: [delegationId], references: [id], onDelete: Cascade)
+  inbox        inbox      @relation(fields: [inboxId], references: [id], onDelete: Cascade)
+
+  @@unique([delegationId, inboxId])
+  @@index([inboxId])
+}
+
+model inbox {
+  id                     String            @id 
+  name                   String            
+  description            String            @default("") 
+  createdBy              String?           
+  createdAt              DateTime          @default(now())
+  customFields           String            @default("{}") 
+  scopeId                String            @default("global") 
+  scopeType              String            @default("company") 
+  workspaceId            String?           
+  ticketStatusesEnabled  Boolean           @default(false)
+  ticketIdEnabled        Boolean           @default(false)
+  ticketIdCounter        Int               @default(0)
+  delegationinbox        delegationinbox[]
+  workspace              workspace?        @relation(fields: [workspaceId], references: [id])
+  inboxchannel           inboxchannel[]
+  thread                 thread[]
+
+  @@index([workspaceId])
+  @@index([scopeType, scopeId])
+}
+
+model inboxchannel {
+  id        String   @id 
+  inboxId   String   
+  channelId String   
+  createdBy String?  
+  createdAt DateTime @default(now())
+  channel   channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  inbox     inbox    @relation(fields: [inboxId], references: [id], onDelete: Cascade)
+
+  @@unique([inboxId, channelId])
+  @@index([channelId])
+}
+
+model message {
+  id                String   @id 
+  threadId          String   
+  channelId         String   
+  providerMessageId String?
+  fromEmail         String
+  toRecipients      String   
+  ccRecipients      String   
+  bodyText          String   
+  bodyHtml          String   
+  attachments       String   
+  receivedAt        DateTime
+  direction         String   
+  createdBy         String?  
+  inReplyTo         String?  
+  references        String?  
+  scopeId           String   @default("global") 
+  scopeType         String   @default("company") 
+  channel           channel  @relation(fields: [channelId], references: [id])
+  thread            thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@index([threadId, receivedAt])
+  @@index([scopeType, scopeId])
+}
+
+model messagetemplate {
+  id             String         @id 
+  name           String         
+  subject        String         
+  folderId       String         
+  createdBy      String?        
+  createdAt      DateTime       @default(now())
+  templatefolder templatefolder @relation(fields: [folderId], references: [id])
+
+  @@index([folderId])
+}
+
+model oauthaccount {
+  id           String   @id 
+  userId       String?  
+  provider     String   
+  email        String
+  accessToken  String   
+  refreshToken String?  
+  expiresAt    DateTime
+  updatedAt    DateTime
+  createdAt    DateTime @default(now())
+  user         user?    @relation(fields: [userId], references: [id])
+
+  @@unique([provider, email])
+  @@index([userId])
+}
+
+model signature {
+  id               String             @id 
+  name             String             
+  displayName      String             
+  senderFromLines  String             
+  createdBy        String?            
+  createdAt        DateTime           @default(now())
+  signaturechannel signaturechannel[]
+}
+
+model signaturechannel {
+  id          String    @id 
+  signatureId String    
+  channelId   String    
+  createdAt   DateTime  @default(now())
+  channel     channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  signature   signature @relation(fields: [signatureId], references: [id], onDelete: Cascade)
+
+  @@unique([signatureId, channelId])
+  @@index([channelId])
+}
+
+model templatefolder {
+  id              String            @id 
+  name            String            
+  createdAt       DateTime          @default(now())
+  messagetemplate messagetemplate[]
+}
+
+model thread {
+  id                String    @id 
+  embedding         Unsupported("vector(1536)")?
+  channelId         String    
+  externalThreadKey String?   @unique()
+  subject           String    
+  subjectKey        String    
+  participants      String    
+  status            String    @default("open") 
+  assignmentState   String    @default("unassigned") 
+  assignedTo        String?   
+  priority          String    @default("normal") 
+  tags              String    
+  lastActivityAt    DateTime
+  createdAt         DateTime  @default(now())
+  scopeId           String    @default("global") 
+  scopeType         String    @default("company") 
+  inboxId           String?   
+  snoozedUntil      DateTime?
+  comment           comment[]
+  message           message[]
+  event             event[]
+  channel           channel   @relation(fields: [channelId], references: [id])
+  inbox             inbox?    @relation(fields: [inboxId], references: [id])
+
+  @@index([lastActivityAt])
+  @@index([channelId, subjectKey])
+  @@index([scopeType, scopeId])
+  @@index([inboxId])
+}
+
+model user {
+  id                  String                @id 
+  name                String                
+  firstName           String?               
+  lastName            String?               
+  username            String?               @unique() 
+  email               String                @unique()
+  passwordHash        String?               
+  role                String                @default("sales_agent") 
+  status              String                @default("available") 
+  twoFactorEnabled    Boolean               @default(false)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  emailVerified       Boolean               @default(false)
+  image               String?               
+  authaccount         authaccount[]
+  authinvitation      authinvitation[]
+  authmember          authmember[]
+  authsession         authsession[]
+  notificationrule    notificationrule[]
+  notificationsetting notificationsetting?
+  oauthaccount        oauthaccount[]
+  snooze              snooze[]
+  teammategroupmember teammategroupmember[]
+  userpreference      userpreference?
+}
+
+model userpreference {
+  id        String   @id 
+  userId    String   @unique 
+  settings  String   
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model notificationsetting {
+  id        String   @id 
+  userId    String   @unique 
+  desktop   String   @default("smart") 
+  mobile    String   @default("smart") 
+  email     String   @default("smart") 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model notificationrule {
+  id        String   @id 
+  userId    String   
+  trigger   String   
+  inboxId   String?  
+  action    String   
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model snooze {
+  id        String   @id 
+  userId    String   
+  name      String   
+  type      String   
+  day       String?  
+  time      String?  
+  duration  String?  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model teammategroup {
+  id                    String                @id 
+  organizationId        String                
+  name                  String                
+  description           String?               
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  canDeleteGroup        String                @default("[]") 
+  canEditGroup          String                @default("[]") 
+  contactsAccessEnabled Boolean               @default(false)
+  workspaceAccess       String                @default("[]") 
+  members               teammategroupmember[]
+
+  @@index([organizationId])
+}
+
+model teammategroupmember {
+  id        String        @id 
+  groupId   String        
+  userId    String        
+  createdAt DateTime      @default(now())
+  group     teammategroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      user          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+model teammategroupsettings {
+  id             String   @id 
+  organizationId String   @unique 
+  canCreate      String   @default("[]") 
+  canEdit        String   @default("[]") 
+  canDelete      String   @default("[]") 
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ticketstatus {
+  id             String                    @id 
+  organizationId String                    
+  category       String                    
+  name           String                    
+  description    String?                   
+  customerLabel  String?                   
+  isDefault      Boolean                   @default(false)
+  isReopen       Boolean                   @default(false)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  groups         ticketstatusgroupstatus[]
+
+  @@index([organizationId])
+}
+
+model ticketstatusgroup {
+  id             String                    @id 
+  organizationId String                    
+  name           String                    
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  inboxes        ticketstatusgroupinbox[]
+  statuses       ticketstatusgroupstatus[]
+
+  @@index([organizationId])
+}
+
+model ticketstatusgroupstatus {
+  id       String            @id 
+  groupId  String            
+  statusId String            
+  group    ticketstatusgroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  status   ticketstatus      @relation(fields: [statusId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, statusId])
+  @@index([statusId])
+}
+
+model ticketstatusgroupinbox {
+  id      String            @id 
+  groupId String            
+  inboxId String            
+  group   ticketstatusgroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, inboxId])
+}
+
+model tag {
+  id             String     @id 
+  organizationId String     
+  name           String     
+  description    String?    
+  color          String?    
+  emoji          String?    
+  parentId       String?    
+  isArchived     Boolean    @default(false)
+  showInList     Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  scopeId        String     @default("global") 
+  scopeType      String     @default("company") 
+  parent         tag?       @relation("TagToTag", fields: [parentId], references: [id])
+  children       tag[]      @relation("TagToTag")
+  inboxes        taginbox[]
+
+  @@index([organizationId])
+  @@index([parentId])
+  @@index([scopeType, scopeId])
+}
+
+model taginbox {
+  id      String @id 
+  tagId   String 
+  inboxId String 
+  tag     tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, inboxId])
+}
+
+model customfield {
+  id               String           @id 
+  organizationId   String           
+  name             String           
+  description      String?          
+  type             String           
+  model            String           
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  authorganization authorganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, model, name])
+  @@index([organizationId])
+  @@index([model])
+}
+
+model workspace {
+  id               String           @id 
+  organizationId   String           
+  name             String           
+  color            String?          
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  inboxes          inbox[]
+  authorganization authorganization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model view {
+  id             String   @id 
+  organizationId String   
+  name           String   
+  color          String?  
+  emoji          String?  
+  inboxIds       String   @default("[]") 
+  includeTags    String   @default("[]") 
+  excludeTags    String   @default("[]") 
+  assigneeIds    String   @default("[]") 
+  teammateIds    String   @default("[]") 
+  createdBy      String?  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model event {
+  id              String            @id 
+  organizationId  String            
+  threadId        String?           
+  title           String            
+  description     String?           
+  startTime       DateTime
+  endTime         DateTime
+  createdBy       String            
+  provider        String            @default("google") 
+  externalEventId String?           
+  meetingLink     String?           
+  status          String            @default("confirmed") 
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  thread          thread?           @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  eventattendee   eventattendee[]
+
+  @@index([organizationId])
+  @@index([threadId])
+  @@index([startTime])
+}
+
+model eventattendee {
+  id        String   @id 
+  eventId   String   
+  email     String   
+  status    String   @default("needs_action") 
+  createdAt DateTime @default(now())
+  event     event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+model contact {
+  id                String              @id 
+  organizationId    String              
+  name              String              
+  email             String              @unique()
+  phone             String?             
+  x                 String?             
+  description       String?             
+  access            String              @default("Shared")  // "Shared" | "Private" | "Auto-created"
+  accountId         String?             
+  createdBy         String              
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  contactaccount    contactaccount?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  contactlistmember contactlistmember[]
+
+  @@index([organizationId])
+  @@index([accountId])
+}
+
+model contactaccount {
+  id             String    @id 
+  organizationId String    
+  name           String    
+  domain         String    
+  description    String?   
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  contact        contact[]
+
+  @@index([organizationId])
+}
+
+model contactlist {
+  id                String              @id 
+  organizationId    String              
+  name              String              
+  visibility        String              @default("Shared")  // "Shared" | "Private"
+  ownerId           String              
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  contactlistmember contactlistmember[]
+
+  @@index([organizationId])
+}
+
+model contactlistmember {
+  id            String      @id 
+  contactListId String      
+  contactId     String      
+  contactlist   contactlist @relation(fields: [contactListId], references: [id], onDelete: Cascade)
+  contact       contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([contactListId, contactId])
+  @@index([contactId])
+}
+
+// Persisted analytics snapshot per organisation
+// The in-memory AnalyticsStore writes here after every update so that
+// metrics survive backend restarts.
+model analyticsmetric {
+  id        String   @id 
+  orgId     String   @unique 
+  snapshot  Json
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId])
+}
+
+model sequence {
+  id             String          @id 
+  organizationId String          
+  name           String          
+  channelId      String          
+  cc             String?         
+  bcc            String?         
+  senderName     String          
+  status         String          @default("draft")  // draft, active, completed
+  recipients     Json?           @default("[]")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  
+  channel        channel         @relation(fields: [channelId], references: [id])
+  stages         sequencestage[]
+  sequencerecipients sequencerecipient[]
+
+  @@index([organizationId])
+  @@index([channelId])
+}
+
+model sequencestage {
+  id          String    @id 
+  sequenceId  String    
+  name        String    
+  orderIndex  Int
+  sendDate    DateTime?
+  subject     String?   
+  bodyHtml    String?   
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sequence    sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@index([sequenceId])
+}
+
+model sequencerecipient {
+  id             String    @id 
+  sequenceId     String
+  email          String
+  status         String    @default("pending") // pending, active, completed, paused, replied
+  currentStageId String?
+  lastProcessedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  sequence       sequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@unique([sequenceId, email])
+  @@index([sequenceId])
+  @@index([status])
+}
+
+model sequencejob {
+  id             String    @id 
+  sequenceId     String
+  recipientEmail String
+  stageId        String
+  scheduledFor   DateTime
+  status         String    @default("queued") // queued, processing, completed, failed
+  error          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([sequenceId])
+  @@index([status, scheduledFor])
+}
