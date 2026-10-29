@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.6.0",
+    "@prisma/client": "^7.10.1",
     "@tiptap/extension-link": "^3.26.0",
     "@tiptap/extension-underline": "^3.26.0",
     "@tiptap/react": "^3.26.0",
@@ -27,6 +28,7 @@
     "next-themes": "^0.4.6",
     "nuqs": "^2.8.9",
     "papaparse": "^5.5.3",
+    "prisma": "^8.0.0-rc.28",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
     "react-day-picker": "^10.0.1",
